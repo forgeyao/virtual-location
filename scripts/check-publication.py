@@ -15,13 +15,14 @@ import tempfile
 import zipfile
 
 
-LOCAL_DIRECTORIES = {".state", ".build", ".venv", "dist", ".pytest_cache", ".swiftpm", "__pycache__", ".git", ".aws", ".ssh"}
+LOCAL_DIRECTORIES = {".state", ".build", ".venv", "dist", ".pytest_cache", ".swiftpm", "__pycache__", ".git", ".aws", ".ssh",
+                     "xcuserdata"}
 LOCAL_DOCUMENTS = {
     "docs/实现进度.md", "docs/虚拟定位-实现方案-v1.1.md",
     "docs/坐标偏移修复验证-2026-11-08.md", "docs/坐标偏移原因复核-2026-11-08.md",
 }
 PRIVATE_NAMES = ("*.pem", "*.key", "*.p12", "*.pfx", "*.mobileprovision", "*.shsh", "*.shsh2", "*.log", "*.crash", "*.ips",
-                 ".netrc", ".pypirc", ".npmrc", "id_rsa", "id_ed25519")
+                 ".netrc", ".pypirc", ".npmrc", "id_rsa", "id_ed25519", "*.xcuserstate", "*.mobiledevicepairing", "*pairing*.plist")
 ENV_EXAMPLES = {".env.example", ".env.sample", ".env.template"}
 PATTERNS = {
     "private-key": re.compile(r"-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----"),

@@ -12,7 +12,8 @@ def test_ignore_rules_exclude_local_files_before_git_init(tmp_path):
     (tmp_path / ".gitignore").write_text(rules.read_text())
     local = [".state/session.json", ".state/favorites.json", ".build/diagnostic.txt", "dist/Test.app/Contents/Info.plist",
              ".venv/example", ".env", ".env.local", "private.pem", "phone.log", "docs/实现进度.md",
-             "docs/坐标偏移原因复核-2026-11-08.md", "__pycache__/cache.pyc"]
+             "docs/坐标偏移原因复核-2026-11-08.md", "__pycache__/cache.pyc", "ios/pairing.plist",
+             "ios/device.mobiledevicepairing", "ios/App.xcodeproj/xcuserdata/local.xcuserdatad/Settings.plist"]
     for name in local:
         path = tmp_path / name
         path.parent.mkdir(parents=True, exist_ok=True)

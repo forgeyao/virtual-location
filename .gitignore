@@ -11,6 +11,10 @@ dist/
 .swiftpm/
 .idea/
 .vscode/
+xcuserdata/
+*.xcuserstate
+*.mobiledevicepairing
+*pairing*.plist
 .env
 .env.*
 !.env.example

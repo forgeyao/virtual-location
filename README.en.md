@@ -12,7 +12,7 @@ Current desktop version: **0.2.3**. This is a source-built development app. Its 
 
 - **Map selection and search:** select on the map, enter coordinates, or search for a place. Includes search suggestions, clear search, recenter, and preservation of map zoom when selecting a point.
 - **Coordinate systems:** typed input defaults to GCJ-02, with WGS84 available in Settings. Map results and favorites retain their coordinate provenance and are adapted to device GPS coordinates before sending.
-- **Random offset:** off by default; choose 30, 50, 100, or 200 meters. The value is the side length of a square centered on the selection. For example, 200 meters means a 200×200 m square, extending up to 100 m east/west and north/south. Each click samples a fresh point without accumulating drift.
+- **Random offset** is off by default. Choose 30, 50, 100, or 200 meters. The app remembers the toggle and range across launches. The range is the side length of a square centered on the selected point. A 200 m square extends 100 m in each direction along both axes. Each click samples a fresh point around the original selection.
 - **Favorites:** save up to five locations, rename or delete them, and display newest first. At capacity, confirm replacement of the oldest favorite.
 - **Connection and recovery:** automatically discover a USB iPhone, show preparation stages and errors, restore location, keep pending-cleanup markers, and export diagnostics from Settings.
 - **Appearance and language:** system/light/dark appearance, Chinese/English, and a menu-bar entry for reopening the window.

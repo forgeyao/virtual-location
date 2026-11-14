@@ -34,7 +34,6 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
         model = AppModel(preview: args.contains("--preview"), favoritesURL: smokeFavorites, preferences: preferences)
         smokeFavoritesURL = smokeFavorites
         NSApp.setActivationPolicy(.regular)
-        NSApp.applicationIconImage = BrandArtwork.image()
         applyAppearance()
         preferences.onChange = { [weak self] in
             guard let self else { return }
@@ -107,7 +106,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
             .applicationIcon: icon,
             .applicationName: tr("虚拟定位"),
             .applicationVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.3",
-            .version: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "5",
+            .version: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "6",
         ])
     }
     private func tr(_ key: String) -> String { preferences.text(key) }

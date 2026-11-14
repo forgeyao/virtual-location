@@ -15,8 +15,6 @@ final class AppModel: ObservableObject {
     @Published var longitude = "" { didSet { coordinateTextChanged() } }
     @Published private(set) var coordinateSystem: CoordinateSystem = .gcj02
     @Published private(set) var coordinateMessage = ""
-    @Published var randomLocationEnabled = false
-    @Published var randomLocationRange: RandomLocationRange = .fifty
     @Published private(set) var lastRandomizedCoordinate: TargetCoordinate?
     @Published var point: CLLocationCoordinate2D?
     @Published var placeName = "尚未选择位置"
@@ -253,9 +251,9 @@ final class AppModel: ObservableObject {
 
     func apply() {
         guard let center = deviceCoordinate, let sessionID, canApply else { return }
-        let randomized = randomLocationEnabled
+        let randomized = preferences.randomLocationEnabled
         var generator = SystemRandomNumberGenerator()
-        let coordinate = randomized ? randomLocationRange.offset(from: center, using: &generator) : center
+        let coordinate = randomized ? preferences.randomLocationRange.offset(from: center, using: &generator) : center
         perform { [self] in
             let data = try await backend.send("setLocation", values: ["sessionId": sessionID,
                 "latitude": coordinate.latitude, "longitude": coordinate.longitude])

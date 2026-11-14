@@ -147,16 +147,16 @@ struct ContentView: View {
 
     private var randomLocationOptions: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle(tr("随机偏移"), isOn: $model.randomLocationEnabled)
+            Toggle(tr("随机偏移"), isOn: $preferences.randomLocationEnabled)
                 .toggleStyle(.switch).controlSize(.small)
-            if model.randomLocationEnabled {
-                Picker(tr("随机范围"), selection: $model.randomLocationRange) {
+            if preferences.randomLocationEnabled {
+                Picker(tr("随机范围"), selection: $preferences.randomLocationRange) {
                     ForEach(RandomLocationRange.allCases, id: \.self) { range in
                         Text(preferences.format("%d 米", range.rawValue)).tag(range)
                     }
                 }.pickerStyle(.segmented).labelsHidden()
                 Text(preferences.format("以选点为中心，在 %d × %d 米范围内随机；每次修改定位重新取点。",
-                                        model.randomLocationRange.rawValue, model.randomLocationRange.rawValue))
+                                        preferences.randomLocationRange.rawValue, preferences.randomLocationRange.rawValue))
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }.disabled(model.busy)

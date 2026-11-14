@@ -97,7 +97,7 @@ struct CoordinateChecks {
         let backend = TestDeviceBackend()
         let model = AppModel(preview: true, backend: backend, favoritesURL: directory.appendingPathComponent("favorites.json"),
                              mapCoordinates: FixedMapCoordinates(.gcj02))
-        precondition(!model.randomLocationEnabled && model.randomLocationRange == .fifty)
+        precondition(!model.preferences.randomLocationEnabled && model.preferences.randomLocationRange == .fifty)
         model.apply()
         precondition(backend.commands.isEmpty) // Invalid/disconnected cannot send.
         backend.deviceIDs = ["phone"]
@@ -111,12 +111,12 @@ struct CoordinateChecks {
         while model.busy { await Task.yield() }
         precondition(backend.locations.last == converted && model.lastRandomizedCoordinate == nil)
         let beforeToggle = backend.commands.count
-        model.randomLocationEnabled = true
-        model.randomLocationRange = .hundred
+        model.preferences.randomLocationEnabled = true
+        model.preferences.randomLocationRange = .hundred
         await Task.yield()
         precondition(backend.commands.count == beforeToggle) // Toggle never sends or starts a timer.
         for range in RandomLocationRange.allCases {
-            model.randomLocationRange = range
+            model.preferences.randomLocationRange = range
             var payloads: [TargetCoordinate] = []
             for _ in 0..<8 {
                 model.apply()
@@ -139,16 +139,16 @@ struct CoordinateChecks {
         while model.busy { await Task.yield() }
         precondition(model.error != nil && model.lastRandomizedCoordinate == lastSuccessful)
         backend.failSetLocation = false
-        model.randomLocationEnabled = false
+        model.preferences.randomLocationEnabled = false
         model.apply()
         while model.busy { await Task.yield() }
         precondition(backend.locations.last == converted && model.lastRandomizedCoordinate == nil)
         model.select(center.location, name: "WGS", system: .wgs84)
-        model.randomLocationEnabled = true
+        model.preferences.randomLocationEnabled = true
         model.apply()
         while model.busy { await Task.yield() }
         let wgsOffset = localOffset(backend.locations.last!, from: center)
-        let halfSide = Double(model.randomLocationRange.rawValue) / 2
+        let halfSide = Double(model.preferences.randomLocationRange.rawValue) / 2
         precondition(abs(wgsOffset.east) <= halfSide + 0.01 && abs(wgsOffset.north) <= halfSide + 0.01)
         model.select(.init(latitude: 23, longitude: 113), name: "Unknown", system: .unresolved)
         let count = backend.commands.count
@@ -307,6 +307,8 @@ struct CoordinateChecks {
         precondition(!preferences.requiresRelaunch)
         preferences.appearance = .dark
         preferences.language = .english
+        preferences.randomLocationEnabled = true
+        preferences.randomLocationRange = .twoHundred
         precondition(preferences.requiresRelaunch)
         let loaded = AppPreferences(url: url)
         precondition(loaded.appearance == .dark && loaded.language == .english)
@@ -321,6 +323,10 @@ struct CoordinateChecks {
         precondition(AppPreferences(url: url).appearance == .system && AppPreferences(url: url).language == .chinese)
         precondition(loaded.appearance.appearance == nil && loaded.text("坐标") == "坐标")
         let model = AppModel(preview: true, preferences: loaded)
+        precondition(model.preferences.randomLocationEnabled && model.preferences.randomLocationRange == .twoHundred)
+        model.preferences.randomLocationEnabled = false
+        let reloaded = AppPreferences(url: url)
+        precondition(!reloaded.randomLocationEnabled && reloaded.randomLocationRange == .twoHundred)
         model.state = "ready"
         model.appendLog("已发送设置请求")
         loaded.language = .english
@@ -342,6 +348,7 @@ struct CoordinateChecks {
         try! Data(#"{"appearance":"dark","language":"en"}"#.utf8).write(to: url)
         let preferences = AppPreferences(url: url)
         precondition(preferences.coordinateSystem == .gcj02 && preferences.appearance == .dark && preferences.language == .english)
+        precondition(!preferences.randomLocationEnabled && preferences.randomLocationRange == .fifty)
         let backend = TestDeviceBackend()
         let model = AppModel(preview: true, backend: backend, favoritesURL: directory.appendingPathComponent("favorites.json"),
                              preferences: preferences, mapCoordinates: FixedMapCoordinates(.gcj02))

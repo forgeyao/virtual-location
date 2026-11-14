@@ -23,9 +23,9 @@ info = {
     "CFBundleIdentifier": "local.virtual-location.app",
     "CFBundleName": "虚拟定位", "CFBundleDisplayName": "虚拟定位",
     "CFBundleExecutable": "VirtualLocation", "CFBundlePackageType": "APPL",
-    "CFBundleIconFile": "AppIcon",
+    "CFBundleIconFile": "AppIcon.icns",
     "CFBundleDevelopmentRegion": "zh-Hans", "CFBundleLocalizations": ["zh-Hans", "en"],
-    "CFBundleShortVersionString": "0.2.3", "CFBundleVersion": "5",
+    "CFBundleShortVersionString": "0.2.3", "CFBundleVersion": "6",
     "LSMinimumSystemVersion": "14.0", "NSHighResolutionCapable": True,
     "VLProjectRoot": str(root), "NSPrincipalClass": "NSApplication",
 }

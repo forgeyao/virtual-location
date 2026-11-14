@@ -19,6 +19,8 @@ final class AppPreferences: ObservableObject {
     @Published var appearance: AppAppearance = .system { didSet { save(); onChange?() } }
     @Published var language: AppLanguage = .chinese { didSet { save(); onChange?() } }
     @Published var coordinateSystem: CoordinateSystem = .gcj02 { didSet { save(); onChange?() } }
+    @Published var randomLocationEnabled = false { didSet { save() } }
+    @Published var randomLocationRange: RandomLocationRange = .fifty { didSet { save() } }
     @Published private(set) var error: String?
     var onChange: (() -> Void)?
     private let url: URL?
@@ -33,6 +35,8 @@ final class AppPreferences: ObservableObject {
                 appearance = values.appearance
                 language = values.language
                 coordinateSystem = values.coordinateSystem.flatMap { $0 == .unresolved ? nil : $0 } ?? .gcj02
+                randomLocationEnabled = values.randomLocationEnabled ?? false
+                randomLocationRange = values.randomLocationRange.flatMap(RandomLocationRange.init(rawValue:)) ?? .fifty
             } catch { self.error = "无法读取设置，已使用默认设置。" }
         }
         self.launchLanguage = launchLanguage ?? language
@@ -64,7 +68,9 @@ final class AppPreferences: ObservableObject {
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
                                                     attributes: [.posixPermissions: 0o700])
-            try JSONEncoder().encode(Values(appearance: appearance, language: language, coordinateSystem: coordinateSystem)).write(to: url, options: .atomic)
+            let values = Values(appearance: appearance, language: language, coordinateSystem: coordinateSystem,
+                                randomLocationEnabled: randomLocationEnabled, randomLocationRange: randomLocationRange.rawValue)
+            try JSONEncoder().encode(values).write(to: url, options: .atomic)
             try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
             error = nil
         } catch { self.error = "无法保存设置，请检查本地存储权限。" }
@@ -74,6 +80,8 @@ final class AppPreferences: ObservableObject {
         let appearance: AppAppearance
         let language: AppLanguage
         let coordinateSystem: CoordinateSystem?
+        let randomLocationEnabled: Bool?
+        let randomLocationRange: Int?
     }
 
     static let english: [String: String] = [
