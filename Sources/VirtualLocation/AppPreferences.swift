@@ -21,6 +21,7 @@ final class AppPreferences: ObservableObject {
     @Published var coordinateSystem: CoordinateSystem = .gcj02 { didSet { save(); onChange?() } }
     @Published var randomLocationEnabled = false { didSet { save() } }
     @Published var randomLocationRange: RandomLocationRange = .fifty { didSet { save() } }
+    @Published var lastSelection: SavedLocation? { didSet { save() } }
     @Published private(set) var error: String?
     var onChange: (() -> Void)?
     private let url: URL?
@@ -37,6 +38,7 @@ final class AppPreferences: ObservableObject {
                 coordinateSystem = values.coordinateSystem.flatMap { $0 == .unresolved ? nil : $0 } ?? .gcj02
                 randomLocationEnabled = values.randomLocationEnabled ?? false
                 randomLocationRange = values.randomLocationRange.flatMap(RandomLocationRange.init(rawValue:)) ?? .fifty
+                lastSelection = values.lastSelection.flatMap { $0.isValid ? $0 : nil }
             } catch { self.error = "无法读取设置，已使用默认设置。" }
         }
         self.launchLanguage = launchLanguage ?? language
@@ -69,7 +71,8 @@ final class AppPreferences: ObservableObject {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
                                                     attributes: [.posixPermissions: 0o700])
             let values = Values(appearance: appearance, language: language, coordinateSystem: coordinateSystem,
-                                randomLocationEnabled: randomLocationEnabled, randomLocationRange: randomLocationRange.rawValue)
+                                randomLocationEnabled: randomLocationEnabled, randomLocationRange: randomLocationRange.rawValue,
+                                lastSelection: lastSelection)
             try JSONEncoder().encode(values).write(to: url, options: .atomic)
             try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
             error = nil
@@ -82,6 +85,7 @@ final class AppPreferences: ObservableObject {
         let coordinateSystem: CoordinateSystem?
         let randomLocationEnabled: Bool?
         let randomLocationRange: Int?
+        let lastSelection: SavedLocation?
     }
 
     static let english: [String: String] = [

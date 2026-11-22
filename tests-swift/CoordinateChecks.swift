@@ -26,6 +26,7 @@ struct CoordinateChecks {
         await coordinateSystemChecks()
         await defaultCoordinateSystemChecks()
         await randomLocationChecks()
+        await selectionPersistenceChecks()
         statusPresentationChecks()
     }
 
@@ -156,7 +157,99 @@ struct CoordinateChecks {
         await Task.yield()
         precondition(backend.commands.count == count) // Random mode cannot bypass datum confirmation.
         await model.quit()
-        print("Random location checks passed: disabled default, 30/50/100/200 metre squares, uniform coverage, poles/antimeridian, fresh per-click WGS84/GCJ payloads, no accumulated drift, source/favorite preservation, failures and unresolved/disconnected guards; fake backend only")
+        print("Random location checks passed: disabled default, 50/100/150/200 metre squares, uniform coverage, poles/antimeridian, fresh per-click WGS84/GCJ payloads, no accumulated drift, source/favorite preservation, failures and unresolved/disconnected guards; fake backend only")
+    }
+
+    @MainActor static func selectionPersistenceChecks() async {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try! FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("preferences.json")
+        let favoritesURL = directory.appendingPathComponent("favorites.json")
+        try! Data(#"{"appearance":"dark","language":"en","randomLocationEnabled":true,"randomLocationRange":30}"#.utf8).write(to: url)
+        let preferences = AppPreferences(url: url)
+        precondition(preferences.lastSelection == nil && preferences.randomLocationEnabled && preferences.randomLocationRange == .fifty)
+        precondition(preferences.appearance == .dark && preferences.language == .english)
+        precondition(RandomLocationRange.allCases.map(\.rawValue) == [50, 100, 150, 200])
+        preferences.randomLocationRange = .oneHundredFifty
+        precondition(AppPreferences(url: url).randomLocationRange == .oneHundredFifty)
+
+        let backend = TestDeviceBackend()
+        let model = AppModel(preview: true, backend: backend, favoritesURL: favoritesURL, preferences: preferences,
+                             mapCoordinates: FixedMapCoordinates(.gcj02))
+        let raw = CLLocationCoordinate2D(latitude: 23.003558, longitude: 113.3485861)
+        model.selectMapPoint(raw)
+        for _ in 0..<30 {
+            if model.coordinateSystem != .unresolved { break }
+            await Task.yield()
+        }
+        precondition(model.coordinateSystem == .gcj02)
+        preferences.coordinateSystem = .wgs84
+        let saved = AppPreferences(url: url).lastSelection!
+        precondition(saved.coordinate == TargetCoordinate(raw) && saved.coordinateSystem == .gcj02)
+        precondition(saved.mapCoordinate == TargetCoordinate(raw) && saved.generatedName && !saved.isUserInput)
+        let offline = FixedMapCoordinates(.wgs84)
+        offline.fail = true
+        let restoredBackend = TestDeviceBackend()
+        let restored = AppModel(preview: true, backend: restoredBackend, favoritesURL: favoritesURL,
+                                preferences: AppPreferences(url: url), mapCoordinates: offline)
+        precondition(restored.latitude == model.latitude && restored.longitude == model.longitude)
+        precondition(restored.point?.longitude == raw.longitude && restored.position.region?.center.latitude == raw.latitude)
+        precondition(restored.coordinateSystem == .gcj02 && restored.displayPlaceName == "Map selection")
+        precondition(restored.deviceCoordinate == model.deviceCoordinate)
+        restored.apply()
+        precondition(!restored.connected && restoredBackend.commands.isEmpty)
+
+        backend.deviceIDs = ["phone"]
+        await model.checkForDevice()
+        model.apply()
+        while model.busy { await Task.yield() }
+        precondition(AppPreferences(url: url).lastSelection!.coordinate == TargetCoordinate(raw))
+        precondition(model.lastRandomizedCoordinate == backend.locations.last)
+
+        let searchItem = MKMapItem(placemark: MKPlacemark(coordinate: .init(latitude: -33.8568, longitude: 151.2153)))
+        searchItem.name = "Opera House"
+        model.selectSearchResult(searchItem)
+        precondition(model.addFavorite(name: "Sydney"))
+        model.selectFavorite(model.favorites.first!)
+        precondition(model.renameFavorite(model.favorites.first!, name: "Favorite renamed"))
+        let favoriteModel = AppModel(preview: true, backend: TestDeviceBackend(), favoritesURL: favoritesURL,
+                                     preferences: AppPreferences(url: url), mapCoordinates: offline)
+        precondition(favoriteModel.displayPlaceName == "Favorite renamed" && favoriteModel.currentFavorite?.name == "Favorite renamed")
+        precondition(favoriteModel.coordinateSystem == .wgs84)
+
+        model.latitude = "40.1234567891"
+        model.longitude = "116.2345678912"
+        let typed = AppPreferences(url: url).lastSelection!
+        precondition(typed.isUserInput && typed.name == "经纬度选点" && typed.mapCoordinate == nil)
+        model.latitude = "invalid"
+        precondition(AppPreferences(url: url).lastSelection!.coordinate == typed.coordinate)
+        let typedPreferences = AppPreferences(url: url)
+        let typedModel = AppModel(preview: true, backend: TestDeviceBackend(), favoritesURL: favoritesURL,
+                                  preferences: typedPreferences, mapCoordinates: FixedMapCoordinates(.gcj02))
+        precondition(typedModel.coordinate == typed.coordinate && typedModel.coordinateSystem == .wgs84)
+        typedPreferences.coordinateSystem = .gcj02
+        precondition(typedModel.coordinateSystem == .gcj02)
+
+        let legacy = FavoriteLocation(id: UUID(), name: "Legacy", latitude: raw.latitude, longitude: raw.longitude)
+        try! FavoriteStore(url: favoritesURL).save([legacy])
+        model.selectFavorite(legacy)
+        let legacyModel = AppModel(preview: true, backend: TestDeviceBackend(), favoritesURL: favoritesURL,
+                                   preferences: AppPreferences(url: url), mapCoordinates: FixedMapCoordinates(.gcj02))
+        precondition(legacyModel.coordinateSystem == .unresolved && legacyModel.deviceCoordinate == nil)
+        legacyModel.setInputCoordinateSystem(.gcj02)
+        precondition((try! FavoriteStore(url: favoritesURL).load()).first!.coordinateSystem == .gcj02)
+
+        var invalid = try! JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: Any]
+        var selection = invalid["lastSelection"] as! [String: Any]
+        selection["coordinate"] = ["latitude": 999, "longitude": 113]
+        invalid["lastSelection"] = selection
+        try! JSONSerialization.data(withJSONObject: invalid).write(to: url)
+        let invalidPreferences = AppPreferences(url: url)
+        precondition(invalidPreferences.lastSelection == nil && invalidPreferences.appearance == .dark)
+        precondition(invalidPreferences.language == .english && invalidPreferences.randomLocationRange == .oneHundredFifty)
+        await model.quit()
+        print("Selection persistence passed: map/search/favorite/manual restoration, map display offline, datum and input provenance, names, random center preservation, legacy confirmation, invalid cache rejection, 30-to-50 migration, 150 metre reload and no automatic phone writes")
     }
 
     // Independent short-distance projection for checking square bounds.

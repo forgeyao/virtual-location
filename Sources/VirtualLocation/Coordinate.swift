@@ -1,7 +1,7 @@
 import Foundation
 import CoreLocation
 
-struct TargetCoordinate: Equatable {
+struct TargetCoordinate: Codable, Equatable {
     let latitude: Double
     let longitude: Double
 
@@ -21,8 +21,23 @@ struct TargetCoordinate: Equatable {
     var location: CLLocationCoordinate2D { .init(latitude: latitude, longitude: longitude) }
 }
 
+struct SavedLocation: Codable {
+    let coordinate: TargetCoordinate
+    let coordinateSystem: CoordinateSystem
+    let name: String
+    let generatedName: Bool
+    let isUserInput: Bool
+    let mapCoordinate: TargetCoordinate?
+    let legacyFavoriteID: UUID?
+
+    var isValid: Bool {
+        CLLocationCoordinate2DIsValid(coordinate.location)
+            && (mapCoordinate.map { CLLocationCoordinate2DIsValid($0.location) } ?? true)
+    }
+}
+
 enum RandomLocationRange: Int, CaseIterable {
-    case thirty = 30, fifty = 50, hundred = 100, twoHundred = 200
+    case fifty = 50, hundred = 100, oneHundredFifty = 150, twoHundred = 200
 
     // Uniform east/north offsets form a square in the local tangent plane.
     // A great-circle destination avoids longitude division at the poles and

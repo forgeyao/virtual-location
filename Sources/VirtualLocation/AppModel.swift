@@ -96,6 +96,40 @@ final class AppModel: ObservableObject {
             guard let self, self.coordinatesAreUserInput else { return }
             self.setInputCoordinateSystem(system)
         }
+        if let saved = self.preferences.lastSelection { restoreSelection(saved) }
+    }
+
+    private func restoreSelection(_ saved: SavedLocation) {
+        assigningSelection = true
+        latitude = saved.isUserInput ? String(saved.coordinate.latitude)
+            : String(format: "%.7f", locale: Locale(identifier: "en_US_POSIX"), saved.coordinate.latitude)
+        longitude = saved.isUserInput ? String(saved.coordinate.longitude)
+            : String(format: "%.7f", locale: Locale(identifier: "en_US_POSIX"), saved.coordinate.longitude)
+        assigningSelection = false
+        coordinateSystem = saved.coordinateSystem
+        selectedInput = coordinate
+        placeName = saved.name
+        generatedPlaceName = saved.generatedName
+        coordinatesAreUserInput = saved.isUserInput
+        selectedLegacyFavoriteID = saved.legacyFavoriteID
+        if let point = saved.mapCoordinate {
+            showMapPoint(point.location, recenter: true)
+        } else {
+            showInputOnMap(recenter: true)
+        }
+        if coordinateSystem == .unresolved { coordinateMessage = "请先确认坐标系。" }
+    }
+
+    private func saveSelection() {
+        guard let coordinate else { return }
+        let matchesSelection = selectedInput == coordinate
+        preferences.lastSelection = SavedLocation(
+            coordinate: coordinate, coordinateSystem: coordinateSystem,
+            name: matchesSelection ? placeName : "经纬度选点",
+            generatedName: matchesSelection ? generatedPlaceName : true,
+            isUserInput: coordinatesAreUserInput,
+            mapCoordinate: matchesSelection ? point.map(TargetCoordinate.init) : nil,
+            legacyFavoriteID: selectedLegacyFavoriteID)
     }
 
     private func coordinateTextChanged() {
@@ -106,6 +140,7 @@ final class AppModel: ObservableObject {
         selectedLegacyFavoriteID = nil
         coordinateSystem = preferences.coordinateSystem
         coordinateMessage = ""
+        saveSelection()
     }
 
     var connected: Bool { sessionID != nil }
@@ -251,6 +286,7 @@ final class AppModel: ObservableObject {
 
     func apply() {
         guard let center = deviceCoordinate, let sessionID, canApply else { return }
+        saveSelection()
         let randomized = preferences.randomLocationEnabled
         var generator = SystemRandomNumberGenerator()
         let coordinate = randomized ? preferences.randomLocationRange.offset(from: center, using: &generator) : center
@@ -306,6 +342,7 @@ final class AppModel: ObservableObject {
         placeName = name
         generatedPlaceName = generatedName
         showInputOnMap(recenter: recenter)
+        saveSelection()
     }
 
     func selectMapPoint(_ coordinate: CLLocationCoordinate2D) {
@@ -326,10 +363,14 @@ final class AppModel: ObservableObject {
         placeName = name; generatedPlaceName = generatedName
         showMapPoint(coordinate, recenter: recenter)
         guard ChinaCoordinates.mayNeedConversion(coordinate) else {
-            coordinateSystem = .wgs84; coordinateMessage = ""; return
+            coordinateSystem = .wgs84
+            coordinateMessage = ""
+            saveSelection()
+            return
         }
         coordinateSystem = .unresolved
         coordinateMessage = "正在确认地图坐标系…"
+        saveSelection()
         let revision = coordinateRevision
         selectionTask = Task {
             do {
@@ -337,6 +378,7 @@ final class AppModel: ObservableObject {
                 guard !Task.isCancelled, revision == coordinateRevision, coordinateSystem == .unresolved else { return }
                 coordinateSystem = system
                 coordinateMessage = ""
+                saveSelection()
             } catch {
                 guard !Task.isCancelled, revision == coordinateRevision else { return }
                 coordinateMessage = "无法确认地图坐标系，请重试选点或在设置中确认。"
@@ -358,6 +400,7 @@ final class AppModel: ObservableObject {
             if saveFavorites(updated) { selectedLegacyFavoriteID = nil }
         }
         showInputOnMap(recenter: false)
+        saveSelection()
     }
 
     private func showMapPoint(_ coordinate: CLLocationCoordinate2D, recenter: Bool) {
@@ -379,6 +422,7 @@ final class AppModel: ObservableObject {
                 guard !Task.isCancelled, revision == coordinateRevision else { return }
                 let display = mapSystem == .gcj02 ? ChinaCoordinates.toGCJ02(wgs.location) : wgs.location
                 showMapPoint(display, recenter: recenter)
+                saveSelection()
             } catch {
                 guard !Task.isCancelled, revision == coordinateRevision else { return }
                 coordinateMessage = "地图暂不可用，仍可使用已知坐标修改定位。"
@@ -390,6 +434,7 @@ final class AppModel: ObservableObject {
         guard let coordinate else { error = "请输入有效经纬度：纬度 −90 至 90，经度 −180 至 180。"; return }
         select(coordinate.location, name: "经纬度选点", generatedName: true, system: coordinateSystem)
         coordinatesAreUserInput = true
+        saveSelection()
         error = nil
     }
 
@@ -401,6 +446,7 @@ final class AppModel: ObservableObject {
             let userInput = coordinatesAreUserInput
             select(coordinate.location, name: "经纬度选点", generatedName: true, system: coordinateSystem)
             coordinatesAreUserInput = userInput
+            saveSelection()
             return
         }
         guard let point else { return }
@@ -440,6 +486,7 @@ final class AppModel: ObservableObject {
         if let coordinate, existing.matches(coordinate, system: coordinateSystem) {
             placeName = renamed.name
             generatedPlaceName = false
+            saveSelection()
         }
         return true
     }
@@ -449,6 +496,7 @@ final class AppModel: ObservableObject {
         let system = favorite.coordinateSystem ?? (ChinaCoordinates.mayNeedConversion(location) ? .unresolved : .wgs84)
         select(location, name: favorite.name, system: system)
         selectedLegacyFavoriteID = favorite.coordinateSystem == nil ? favorite.id : nil
+        saveSelection()
         if system == .unresolved { coordinateMessage = "旧收藏未记录坐标系，请在设置中确认或重新从地图选点。" }
     }
 

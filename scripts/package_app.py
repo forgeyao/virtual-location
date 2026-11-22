@@ -25,7 +25,7 @@ info = {
     "CFBundleExecutable": "VirtualLocation", "CFBundlePackageType": "APPL",
     "CFBundleIconFile": "AppIcon.icns",
     "CFBundleDevelopmentRegion": "zh-Hans", "CFBundleLocalizations": ["zh-Hans", "en"],
-    "CFBundleShortVersionString": "0.2.3", "CFBundleVersion": "6",
+    "CFBundleShortVersionString": "0.2.3", "CFBundleVersion": "7",
     "LSMinimumSystemVersion": "14.0", "NSHighResolutionCapable": True,
     "VLProjectRoot": str(root), "NSPrincipalClass": "NSApplication",
 }

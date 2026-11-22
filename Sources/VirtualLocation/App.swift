@@ -106,7 +106,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
             .applicationIcon: icon,
             .applicationName: tr("虚拟定位"),
             .applicationVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.3",
-            .version: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "6",
+            .version: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "7",
         ])
     }
     private func tr(_ key: String) -> String { preferences.text(key) }
